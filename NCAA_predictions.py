@@ -2,10 +2,10 @@
 
 import numpy as np
 import pandas as pd
-
+from sklearn.linear_model import LinearRegression
 
 # teams = pd.read_csv("Teams.csv")
-# tour_comp = pd.read_csv("TourneyCompactResults.csv")
+tour_comp = pd.read_csv("TourneyCompactResults.csv")
 # tour_deta = pd.read_csv("TourneyDetailedResults.csv")
 tour_seed = pd.read_csv("TourneySeeds.csv")
 tour_slot = pd.read_csv("TourneySlots.csv")
@@ -13,16 +13,21 @@ tour_slot = pd.read_csv("TourneySlots.csv")
 # seas_deta = pd.read_csv("RegularSeasonDetailedResults.csv")
 # seasons = pd.read_csv("Seasons.csv")
 
-# print(tour_slot.describe())
+tour_seed['Index'] = tour_seed['Season'].astype(str) + "_" + tour_seed['Team'].astype(str)
+seed_list = list(tour_seed["Seed"])
+index_list = list(tour_seed["Index"])
+seed_mapping = {index_list[i]:seed_list[i] for i in range(0,len(seed_list))}
+print(seed_mapping)
+# print(tour_seed.describe())
 # print(teams.iloc[[0]])
-# print(teams.head())
+print(tour_seed.head())
 # print(tour_slot)
 
 # print(tour_slot.loc[tour_slot["Season"] == 2015])
 # print(tour_seed.loc[tour_seed["Season"] == 2015])
 
 def set_matchups(season):
-	"""Compile list of matchups for a given season"""
+	"""Compile and return list of matchups for a given season"""
 
 	slots = list(tour_slot["Slot"].loc[tour_slot["Season"] == season]) # get list of slots, e.g. R1W1
 	strongseeds = list(tour_slot["Strongseed"].loc[tour_slot["Season"] == season]) # get list of strongseeds
@@ -34,6 +39,7 @@ def set_matchups(season):
 	# print(team_dict)
 	slot_dict = {slots[j]:[strongseeds[j], weakseeds[j]] for j in range(0, len(slots))} # make dict of slots, value = slots that comprise key slot
 	# print(slot_dict)
+
 
 	eligible = {} # initialize empty dict of teams by slot, {"slot":[[strongseed list],[weakseed list]]}
 	# count = 0 # used for testing
@@ -79,14 +85,49 @@ def set_matchups(season):
 		temp_match = [str(season)+'_'+str(min(a,b))+'_'+str(max(a,b)) for a in group_A for b in group_B]
 		matchups += temp_match # append to matchups
 
-	print(matchups, len(matchups)) # test for correct # of matchups
+	# print(matchups, len(matchups)) # test for correct # of matchups
 
 	return matchups
 
 set_matchups(2015)
 
+# print(tour_comp.describe())
+
+# seed_mapping = {}
+
+# def get_seed(row):
+# 	"""Takes in a row, and returns the seed of the winning and losing team"""
+# 	index = row['Windex']
+# 	if index not in seed_mapping:
+# 		seed_mapping[index] = tour_seed.loc[tour_seed['Index'] == index, 'Seed']
+
+# 	# return seed_mapping[index]
+# 	return None
 
 
+# Add index column to tour_seeds -> YYYY_TeamId, then use that index to return the seeds
+# Wseeds = tour_comp.apply(get_seed)
 
 
+def create_test_set():
+
+	tour_comp['Matchups'] = tour_comp['Season'].astype(str) + "_" + tour_comp[['Wteam','Lteam']].min(axis=1).astype(str) + "_" + tour_comp[['Wteam','Lteam']].max(axis=1).astype(str)
+	tour_comp['Windex'] = tour_comp['Season'].astype(str) + "_" + tour_comp['Wteam'].astype(str)
+	tour_comp['Lindex'] = tour_comp['Season'].astype(str) + "_" + tour_comp['Lteam'].astype(str)
+	# tour_seed.apply(get_seed, axis=1)
+	# print(seed_mapping['1985_1116'])
+	# print(tour_comp.iloc[[0]])
+
+	tour_comp['Wseed'] = tour_comp['Windex'].apply(lambda x: seed_mapping[x])
+	tour_comp['Lseed'] = tour_comp['Lindex'].apply(lambda x: seed_mapping[x])
+	tour_comp['Wseed'] = tour_comp['Wseed'].apply(lambda x: int(x[1:3]))
+	tour_comp['Lseed'] = tour_comp['Lseed'].apply(lambda x: int(x[1:3]))
+	tour_comp['SeedDiff'] = tour_comp['Lseed'] - tour_comp['Wseed']
+
+	print(tour_comp.head())
+
+create_test_set()
+
+alg = LinearRegression()
+predictors = ['SeedDiff']
 
