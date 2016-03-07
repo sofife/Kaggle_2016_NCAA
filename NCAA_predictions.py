@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
+import scipy as sp
 
 # teams = pd.read_csv("Teams.csv")
 tour_comp = pd.read_csv("TourneyCompactResults.csv")
@@ -25,6 +26,16 @@ print(tour_seed.head())
 
 # print(tour_slot.loc[tour_slot["Season"] == 2015])
 # print(tour_seed.loc[tour_seed["Season"] == 2015])
+
+
+def logloss(act, pred):
+    epsilon = 1e-15
+    pred = sp.maximum(epsilon, pred)
+    pred = sp.minimum(1-epsilon, pred)
+    ll = sum(act*sp.log(pred) + sp.subtract(1,act)*sp.log(sp.subtract(1,pred)))
+    ll = ll * -1.0/len(act)
+    return ll
+
 
 def set_matchups(season):
 	"""Compile and return list of matchups for a given season"""
@@ -109,9 +120,9 @@ set_matchups(2015)
 # Wseeds = tour_comp.apply(get_seed)
 
 
-def create_test_set():
+def create_train_set():
 
-	tour_comp['Matchups'] = tour_comp['Season'].astype(str) + "_" + tour_comp[['Wteam','Lteam']].min(axis=1).astype(str) + "_" + tour_comp[['Wteam','Lteam']].max(axis=1).astype(str)
+	tour_comp['Matchup'] = tour_comp['Season'].astype(str) + "_" + tour_comp[['Wteam','Lteam']].min(axis=1).astype(str) + "_" + tour_comp[['Wteam','Lteam']].max(axis=1).astype(str)
 	tour_comp['Windex'] = tour_comp['Season'].astype(str) + "_" + tour_comp['Wteam'].astype(str)
 	tour_comp['Lindex'] = tour_comp['Season'].astype(str) + "_" + tour_comp['Lteam'].astype(str)
 	# tour_seed.apply(get_seed, axis=1)
@@ -122,12 +133,36 @@ def create_test_set():
 	tour_comp['Lseed'] = tour_comp['Lindex'].apply(lambda x: seed_mapping[x])
 	tour_comp['Wseed'] = tour_comp['Wseed'].apply(lambda x: int(x[1:3]))
 	tour_comp['Lseed'] = tour_comp['Lseed'].apply(lambda x: int(x[1:3]))
+	tour_comp['Order'] = 1
+	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Order'] = -1
 	tour_comp['SeedDiff'] = tour_comp['Lseed'] - tour_comp['Wseed']
+	tour_comp['SeedDiff'] = tour_comp['SeedDiff'] * tour_comp['Order']
+	tour_comp['Winner'] = 1
+	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Winner'] = 0
+	print(tour_comp.head(10))
 
-	print(tour_comp.head())
 
-create_test_set()
+create_train_set()
 
 alg = LinearRegression()
 predictors = ['SeedDiff']
 
+alg.fit(tour_comp[predictors], tour_comp["Winner"])
+predictions = alg.predict(tour_comp[predictors])
+predictions[predictions > 1] = 1
+
+tour_comp['pred'] = predictions
+print(tour_comp.head())
+
+submission = pd.DataFrame({'id': tour_comp.loc[tour_comp['Season'] >= 2012, 'Matchup'],
+						   'pred': tour_comp.loc[tour_comp['Season'] >= 2012, 'pred'],
+						   'win': tour_comp.loc[tour_comp['Season'] >= 2012, 'Winner']
+						   })
+
+print(submission.head(10))
+
+# print(submission.describe())
+
+submission.to_csv("kaggleNCAA.csv", index=False)
+
+print(logloss(submission['win'], submission['pred']))
