@@ -13,15 +13,34 @@ tour_slot = pd.read_csv("TourneySlots.csv")
 # seas_comp = pd.read_csv("RegularSeasonCompactResults.csv")
 # seas_deta = pd.read_csv("RegularSeasonDetailedResults.csv")
 # seasons = pd.read_csv("Seasons.csv")
+mas_his = pd.read_csv("massey_ordinals_2003-2015.csv")
+# mas_new = pd.read_csv("MasseyOrdinals2016ThruDay128_59systems.csv")
+print(mas_his.describe())
+print(mas_his.head())
+print(len(mas_his['sys_name'].unique()))
+
+# rpi_his = pd.DataFrame({'season': mas_his.loc[mas_his['sys_name'] == 'RPI', 'season'],
+						# 'rating_day_num': mas_his.loc[mas_his['sys_name'] == 'RPI', 'rating_day_num'],
+						# 'sys_name': mas_his.loc[mas_his['sys_name'] == 'RPI', 'sys_name'],
+						# 'team': mas_his.loc[mas_his['sys_name'] == 'RPI', 'team'],
+						# 'orank': mas_his.loc[mas_his['sys_name'] == 'RPI', 'orank']
+						# })
+
+rpi_his = mas_his.loc[mas_his['sys_name'] == 'RPI'] # this does ^ that
+
+print(rpi_his.describe())
+print(rpi_his.head())
+# print(len(rpi_his['sys_name'].unique()))
+# rpi_his.to_csv("rpi_history.csv", index=False)
 
 tour_seed['Index'] = tour_seed['Season'].astype(str) + "_" + tour_seed['Team'].astype(str)
 seed_list = list(tour_seed["Seed"])
 index_list = list(tour_seed["Index"])
 seed_mapping = {index_list[i]:seed_list[i] for i in range(0,len(seed_list))}
-print(seed_mapping)
+# print(seed_mapping)
 # print(tour_seed.describe())
 # print(teams.iloc[[0]])
-print(tour_seed.head())
+# print(tour_seed.head())
 # print(tour_slot)
 
 # print(tour_slot.loc[tour_slot["Season"] == 2015])
@@ -100,7 +119,7 @@ def set_matchups(season):
 
 	return matchups
 
-set_matchups(2015)
+# set_matchups(2015)
 
 # print(tour_comp.describe())
 
@@ -139,7 +158,7 @@ def create_train_set():
 	tour_comp['SeedDiff'] = tour_comp['SeedDiff'] * tour_comp['Order']
 	tour_comp['Winner'] = 1
 	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Winner'] = 0
-	print(tour_comp.head(10))
+	# print(tour_comp.head(10))
 
 
 create_train_set()
@@ -152,14 +171,14 @@ predictions = alg.predict(tour_comp[predictors])
 predictions[predictions > 1] = 1
 
 tour_comp['pred'] = predictions
-print(tour_comp.head())
+# print(tour_comp.head())
 
 submission = pd.DataFrame({'id': tour_comp.loc[tour_comp['Season'] >= 2012, 'Matchup'],
 						   'pred': tour_comp.loc[tour_comp['Season'] >= 2012, 'pred'],
 						   'win': tour_comp.loc[tour_comp['Season'] >= 2012, 'Winner']
 						   })
 
-print(submission.head(10))
+# print(submission.head(10))
 
 # print(submission.describe())
 
