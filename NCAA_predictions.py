@@ -15,9 +15,9 @@ tour_slot = pd.read_csv("TourneySlots.csv")
 # seasons = pd.read_csv("Seasons.csv")
 mas_his = pd.read_csv("massey_ordinals_2003-2015.csv")
 # mas_new = pd.read_csv("MasseyOrdinals2016ThruDay128_59systems.csv")
-print(mas_his.describe())
-print(mas_his.head())
-print(len(mas_his['sys_name'].unique()))
+# print(mas_his.describe())
+# print(mas_his.head())
+# print(len(mas_his['sys_name'].unique()))
 
 # rpi_his = pd.DataFrame({'season': mas_his.loc[mas_his['sys_name'] == 'RPI', 'season'],
 						# 'rating_day_num': mas_his.loc[mas_his['sys_name'] == 'RPI', 'rating_day_num'],
@@ -26,17 +26,45 @@ print(len(mas_his['sys_name'].unique()))
 						# 'orank': mas_his.loc[mas_his['sys_name'] == 'RPI', 'orank']
 						# })
 
-rpi_his = mas_his.loc[mas_his['sys_name'] == 'RPI'] # this does ^ that
+rpi_his = mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133)] # this does ^ that
+# rpi_his['Index'] = rpi_his['team'].astype(str)
+# rpi_his['Tindex'] = rpi_his.apply(lambda x: x['season'].astype(str) + "_" + x['team'].astype(str))
 
-print(rpi_his.describe())
+
+def create_index(df, a, b):
+	x = list(df[a])
+	y = list(df[b])
+	idx = [str(x[i])+"_"+str(y[i]) for i in range(0, len(x))]
+	return idx
+
+
+def create_dict(a, b):
+	a = list(a)
+	b = list(b)
+	return {a[i]:b[i] for i in range(0,len(a))}
+
+
+rpi_his['Index'] = create_index(rpi_his, 'season', 'team')
 print(rpi_his.head())
+rpi_mapping = create_dict(rpi_his['Index'], rpi_his['orank'])
+ 
+# print(rpi_mapping)
+
+# season_list = list(rpi_his['season'].unique())
+# for s in season_list:
+# 	season_max = rpi_his.loc[rpi_his['season'] == s, 'rating_day_num'].max()
+# 	print(s, season_max)
+
+# rpi_his = rpi_his.loc[rpi_his['rating_day_num'] == 133]
 # print(len(rpi_his['sys_name'].unique()))
 # rpi_his.to_csv("rpi_history.csv", index=False)
 
 tour_seed['Index'] = tour_seed['Season'].astype(str) + "_" + tour_seed['Team'].astype(str)
-seed_list = list(tour_seed["Seed"])
-index_list = list(tour_seed["Index"])
-seed_mapping = {index_list[i]:seed_list[i] for i in range(0,len(seed_list))}
+# seed_list = list(tour_seed["Seed"])
+# index_list = list(tour_seed["Index"])
+# seed_mapping = {index_list[i]:seed_list[i] for i in range(0,len(seed_list))}
+seed_mapping = create_dict(tour_seed["Index"], tour_seed["Seed"])
+
 # print(seed_mapping)
 # print(tour_seed.describe())
 # print(teams.iloc[[0]])
@@ -144,10 +172,6 @@ def create_train_set():
 	tour_comp['Matchup'] = tour_comp['Season'].astype(str) + "_" + tour_comp[['Wteam','Lteam']].min(axis=1).astype(str) + "_" + tour_comp[['Wteam','Lteam']].max(axis=1).astype(str)
 	tour_comp['Windex'] = tour_comp['Season'].astype(str) + "_" + tour_comp['Wteam'].astype(str)
 	tour_comp['Lindex'] = tour_comp['Season'].astype(str) + "_" + tour_comp['Lteam'].astype(str)
-	# tour_seed.apply(get_seed, axis=1)
-	# print(seed_mapping['1985_1116'])
-	# print(tour_comp.iloc[[0]])
-
 	tour_comp['Wseed'] = tour_comp['Windex'].apply(lambda x: seed_mapping[x])
 	tour_comp['Lseed'] = tour_comp['Lindex'].apply(lambda x: seed_mapping[x])
 	tour_comp['Wseed'] = tour_comp['Wseed'].apply(lambda x: int(x[1:3]))
@@ -156,9 +180,14 @@ def create_train_set():
 	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Order'] = -1
 	tour_comp['SeedDiff'] = tour_comp['Lseed'] - tour_comp['Wseed']
 	tour_comp['SeedDiff'] = tour_comp['SeedDiff'] * tour_comp['Order']
-	tour_comp['Winner'] = 1
-	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Winner'] = 0
-	# print(tour_comp.head(10))
+	tour_comp['Winner'] = 1 # winner is on left
+	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Winner'] = 0 # winner is on right
+	# tour_comp['W_RPI'] = rpi_his.loc[(rpi_his['season'] == tour_comp['Season']) & (rpi_his['team'] == tour_comp['Wteam'])]
+
+
+
+	print(tour_comp.head(10))
+	return None
 
 
 create_train_set()
