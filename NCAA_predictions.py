@@ -19,63 +19,18 @@ mas_his = pd.read_csv("massey_ordinals_2003-2015.csv")
 # print(mas_his.head())
 # print(len(mas_his['sys_name'].unique()))
 
-# rpi_his = pd.DataFrame({'season': mas_his.loc[mas_his['sys_name'] == 'RPI', 'season'],
-						# 'rating_day_num': mas_his.loc[mas_his['sys_name'] == 'RPI', 'rating_day_num'],
-						# 'sys_name': mas_his.loc[mas_his['sys_name'] == 'RPI', 'sys_name'],
-						# 'team': mas_his.loc[mas_his['sys_name'] == 'RPI', 'team'],
-						# 'orank': mas_his.loc[mas_his['sys_name'] == 'RPI', 'orank']
-						# })
+rpi_his = pd.DataFrame({'season': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'season'],
+						'rating_day_num': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'rating_day_num'],
+						'sys_name': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'sys_name'],
+						'team': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'team'],
+						'orank': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'orank']
+						})
 
-rpi_his = mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133)] # this does ^ that
-# rpi_his['Index'] = rpi_his['team'].astype(str)
-# rpi_his['Tindex'] = rpi_his.apply(lambda x: x['season'].astype(str) + "_" + x['team'].astype(str))
-
-
-def create_index(df, a, b):
-	x = list(df[a])
-	y = list(df[b])
-	idx = [str(x[i])+"_"+str(y[i]) for i in range(0, len(x))]
-	return idx
-
-
-def create_dict(a, b):
-	a = list(a)
-	b = list(b)
-	return {a[i]:b[i] for i in range(0,len(a))}
-
-
-rpi_his['Index'] = create_index(rpi_his, 'season', 'team')
-print(rpi_his.head())
-rpi_mapping = create_dict(rpi_his['Index'], rpi_his['orank'])
- 
-# print(rpi_mapping)
-
-# season_list = list(rpi_his['season'].unique())
-# for s in season_list:
-# 	season_max = rpi_his.loc[rpi_his['season'] == s, 'rating_day_num'].max()
-# 	print(s, season_max)
-
-# rpi_his = rpi_his.loc[rpi_his['rating_day_num'] == 133]
-# print(len(rpi_his['sys_name'].unique()))
-# rpi_his.to_csv("rpi_history.csv", index=False)
-
-tour_seed['Index'] = tour_seed['Season'].astype(str) + "_" + tour_seed['Team'].astype(str)
-# seed_list = list(tour_seed["Seed"])
-# index_list = list(tour_seed["Index"])
-# seed_mapping = {index_list[i]:seed_list[i] for i in range(0,len(seed_list))}
-seed_mapping = create_dict(tour_seed["Index"], tour_seed["Seed"])
-
-# print(seed_mapping)
-# print(tour_seed.describe())
-# print(teams.iloc[[0]])
-# print(tour_seed.head())
-# print(tour_slot)
-
-# print(tour_slot.loc[tour_slot["Season"] == 2015])
-# print(tour_seed.loc[tour_seed["Season"] == 2015])
+# rpi_his = mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133)] # this does ^ that, but causes a ViewVersusCopyError exception when adding new columns
 
 
 def logloss(act, pred):
+    """Kaggles scoring function"""
     epsilon = 1e-15
     pred = sp.maximum(epsilon, pred)
     pred = sp.minimum(1-epsilon, pred)
@@ -84,8 +39,34 @@ def logloss(act, pred):
     return ll
 
 
+def create_index(df, a, b):
+	"""Creates index by combining a_b, primarily for Season_Team"""
+	x = list(df[a])
+	y = list(df[b])
+	idx = [str(x[i])+"_"+str(y[i]) for i in range(0, len(x))]
+	return idx
+
+
+def create_dict(a, b):
+	"""Creates a dict of index:value, for adding values to the tour_comp or whatever"""
+	a = list(a)
+	b = list(b)
+	return {a[i]:b[i] for i in range(0,len(a))}
+
+
+print(rpi_his.head())
+# rpi_his.to_csv("rpi_history.csv", index=False) # used for creating an excel/gnumeric friendly sized file
+
+rpi_his['Index'] = create_index(rpi_his, 'season', 'team')
+rpi_mapping = create_dict(rpi_his['Index'], rpi_his['orank'])
+ 
+tour_seed['Index'] = create_index(tour_seed, 'Season', 'Team')
+seed_mapping = create_dict(tour_seed["Index"], tour_seed["Seed"])
+
+
+
 def set_matchups(season):
-	"""Compile and return list of matchups for a given season"""
+	"""Compile and return list of matchups for a given season (for Contest 2)"""
 
 	slots = list(tour_slot["Slot"].loc[tour_slot["Season"] == season]) # get list of slots, e.g. R1W1
 	strongseeds = list(tour_slot["Strongseed"].loc[tour_slot["Season"] == season]) # get list of strongseeds
@@ -94,34 +75,24 @@ def set_matchups(season):
 	teams = list(tour_seed["Team"].loc[tour_seed["Season"] == season]) # get list of teams ordered by seed
 
 	team_dict = {seeds[i]:teams[i] for i in range(0,len(seeds))} # make dict of teams by seed (probably redundant)
-	# print(team_dict)
 	slot_dict = {slots[j]:[strongseeds[j], weakseeds[j]] for j in range(0, len(slots))} # make dict of slots, value = slots that comprise key slot
-	# print(slot_dict)
-
 
 	eligible = {} # initialize empty dict of teams by slot, {"slot":[[strongseed list],[weakseed list]]}
 	# count = 0 # used for testing
 	for s in slots:
 		eligible[s] = [] # each slot has a list of 2 sets of teams that could face each other
 		for t in slot_dict[s]:
-			# print("t = ",t)
 			if t in team_dict: # if slot component is a team, create a list element of the team id
-				# print(1)
 				team_id = []
 				team_id.append(team_dict[t]) # could probably combine these 2 lines into team_id = list(team_dict[t])
-				# print("team_id = ",team_id)
 				eligible[s].append(team_id) # append team_id to eligible teams for that slot
-				# print(2)
 			elif t in eligible: # if t is a slot itself
-				# print(eligible[t])
 				temp_list = []
 				for u in eligible[t]: # for teams from prior round, add them all to a list of teams for 1/2 of this slots matchups
-					# print("u = ",u)
 					if type(u) is list: # to avoid nesting lists, 
 						temp_list += u
 					else:
 						temp_list.append(u) # should all be list now, legacy element, should never fire
-				# print("u2 =",temp_list)
 				eligible[s].append(temp_list) # add list of opponents to eligible slot for that round
 			else:
 				pass
@@ -147,25 +118,8 @@ def set_matchups(season):
 
 	return matchups
 
+
 # set_matchups(2015)
-
-# print(tour_comp.describe())
-
-# seed_mapping = {}
-
-# def get_seed(row):
-# 	"""Takes in a row, and returns the seed of the winning and losing team"""
-# 	index = row['Windex']
-# 	if index not in seed_mapping:
-# 		seed_mapping[index] = tour_seed.loc[tour_seed['Index'] == index, 'Seed']
-
-# 	# return seed_mapping[index]
-# 	return None
-
-
-# Add index column to tour_seeds -> YYYY_TeamId, then use that index to return the seeds
-# Wseeds = tour_comp.apply(get_seed)
-
 
 def create_train_set():
 
@@ -178,13 +132,14 @@ def create_train_set():
 	tour_comp['Lseed'] = tour_comp['Lseed'].apply(lambda x: int(x[1:3]))
 	tour_comp['Order'] = 1
 	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Order'] = -1
-	tour_comp['SeedDiff'] = tour_comp['Lseed'] - tour_comp['Wseed']
-	tour_comp['SeedDiff'] = tour_comp['SeedDiff'] * tour_comp['Order']
+	tour_comp['Seed_Diff'] = tour_comp['Lseed'] - tour_comp['Wseed']
+	tour_comp['Seed_Diff'] = tour_comp['Seed_Diff'] * tour_comp['Order']
 	tour_comp['Winner'] = 1 # winner is on left
 	tour_comp.loc[tour_comp['Wteam'] > tour_comp['Lteam'], 'Winner'] = 0 # winner is on right
-	# tour_comp['W_RPI'] = rpi_his.loc[(rpi_his['season'] == tour_comp['Season']) & (rpi_his['team'] == tour_comp['Wteam'])]
-
-
+	tour_comp['W_RPI'] = tour_comp['Windex'].apply(lambda x: rpi_mapping[x] if x in rpi_mapping else 0)
+	tour_comp['L_RPI'] = tour_comp['Lindex'].apply(lambda x: rpi_mapping[x] if x in rpi_mapping else 0)
+	tour_comp['RPI_Diff'] = tour_comp['L_RPI'] - tour_comp['W_RPI']
+	tour_comp['RPI_Diff'] = tour_comp['RPI_Diff'] * tour_comp['Order']
 
 	print(tour_comp.head(10))
 	return None
@@ -193,7 +148,8 @@ def create_train_set():
 create_train_set()
 
 alg = LinearRegression()
-predictors = ['SeedDiff']
+# predictors = ['Seed_Diff']
+predictors = ['RPI_Diff']
 
 alg.fit(tour_comp[predictors], tour_comp["Winner"])
 predictions = alg.predict(tour_comp[predictors])
@@ -208,7 +164,6 @@ submission = pd.DataFrame({'id': tour_comp.loc[tour_comp['Season'] >= 2012, 'Mat
 						   })
 
 # print(submission.head(10))
-
 # print(submission.describe())
 
 submission.to_csv("kaggleNCAA.csv", index=False)
