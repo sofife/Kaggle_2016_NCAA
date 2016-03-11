@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 import scipy as sp
 
+## Read in CSV files
 # teams = pd.read_csv("Teams.csv")
 tour_comp = pd.read_csv("TourneyCompactResults.csv")
 # tour_deta = pd.read_csv("TourneyDetailedResults.csv")
@@ -15,9 +16,8 @@ tour_slot = pd.read_csv("TourneySlots.csv")
 # seasons = pd.read_csv("Seasons.csv")
 mas_his = pd.read_csv("massey_ordinals_2003-2015.csv")
 # mas_new = pd.read_csv("MasseyOrdinals2016ThruDay128_59systems.csv")
-# print(mas_his.describe())
-# print(mas_his.head())
-# print(len(mas_his['sys_name'].unique()))
+ratings = list(mas_his['sys_name'].unique())
+# print(ratings)
 
 rpi_his = pd.DataFrame({'season': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'season'],
 						'rating_day_num': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'rating_day_num'],
@@ -26,7 +26,26 @@ rpi_his = pd.DataFrame({'season': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (
 						'orank': mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133), 'orank']
 						})
 
-# rpi_his = mas_his.loc[(mas_his['sys_name'] == 'RPI') & (mas_his['rating_day_num'] == 133)] # this does ^ that, but causes a ViewVersusCopyError exception when adding new columns
+
+def transform_mas(ratings):
+	"""Change vertical structure to a wider structure."""
+	mas_list_ords = []
+	mas_list_team = []
+	mas_list_season = []
+
+	for r in ratings:
+		temp_max = mas_his.loc[mas_his['sys_name'] == r, 'rating_day_num'].max()
+		# print(temp_max)
+
+		mas_list_ords.append(list(mas_his.loc[(mas_his['sys_name'] == r) & (mas_his['rating_day_num'] == temp_max), 'orank']))
+		mas_list_team.append(list(mas_his.loc[(mas_his['sys_name'] == r) & (mas_his['rating_day_num'] == temp_max), 'team']))
+		mas_list_season.append(list(mas_his.loc[(mas_his['sys_name'] == r) & (mas_his['rating_day_num'] == temp_max), 'season']))
+
+		# print(mas_lists)
+		break
+	return None
+
+mas_ord = transform_mas(ratings)
 
 
 def logloss(act, pred):
@@ -141,7 +160,7 @@ def create_train_set():
 	tour_comp['RPI_Diff'] = tour_comp['L_RPI'] - tour_comp['W_RPI']
 	tour_comp['RPI_Diff'] = tour_comp['RPI_Diff'] * tour_comp['Order']
 
-	print(tour_comp.head(10))
+	# print(tour_comp.head(10))
 	return None
 
 
@@ -150,6 +169,8 @@ create_train_set()
 alg = LinearRegression()
 # predictors = ['Seed_Diff']
 predictors = ['RPI_Diff']
+
+# tour_comp = tour_comp.loc[tour_comp['Season'] >= 2003]
 
 alg.fit(tour_comp[predictors], tour_comp["Winner"])
 predictions = alg.predict(tour_comp[predictors])
